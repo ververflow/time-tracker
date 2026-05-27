@@ -20,6 +20,7 @@ FOCUS = set(CFG.get("focus_categories", []))
 DISTRACTION = set(CFG.get("distraction_categories", []))
 PORT = int(CFG.get("dashboard_port", 7878))
 PROJECTS = CFG.get("projects", {})
+BLOCK_GAP_S = int(CFG.get("work_block_gap_minutes", 15)) * 60
 
 # colour per category — drives the timeline + bars (Rize-like palette)
 CAT_COLORS = {
@@ -92,6 +93,58 @@ def build_sessions(rows):
     return sessions
 
 
+# ---------------------------------------------------------------- work blocks
+def build_work_blocks(rows, idle_split_s):
+    """Group samples into work blocks. A new block starts when:
+    (a) a consecutive run of idle samples reaches idle_split_s, or
+    (b) the gap between two sample timestamps exceeds idle_split_s
+        (laptop sleep, tracker offline) — these gaps have NO samples at all."""
+    blocks, cur, pending_idle, last_ts = [], None, 0, None
+
+    def close():
+        nonlocal cur, pending_idle
+        if cur is not None:
+            cur["duration"] = cur["end_ts"] - cur["start_ts"]
+            blocks.append(cur)
+            cur = None
+        pending_idle = 0
+
+    for ts, app, title, url, idle in rows:
+        # timestamp gap = laptop slept / tracker was off → split unconditionally
+        if last_ts is not None and ts - last_ts > idle_split_s:
+            close()
+        last_ts = ts
+        if idle:
+            pending_idle += INTERVAL
+            if cur is not None and pending_idle >= idle_split_s:
+                close()
+            continue
+        cat, proj = core.categorize(app, title, url, RULES)
+        if cur is None:
+            cur = {"start_ts": ts, "end_ts": ts + INTERVAL,
+                   "active_s": 0, "break_s": 0,
+                   "by_cat": {}, "by_proj": {}, "by_app": {}, "by_domain": {}}
+        elif pending_idle:
+            cur["break_s"] += pending_idle
+            cur["by_cat"]["Break"] = cur["by_cat"].get("Break", 0) + pending_idle
+        pending_idle = 0
+        cur["active_s"] += INTERVAL
+        cur["end_ts"] = ts + INTERVAL
+        cur["by_cat"][cat] = cur["by_cat"].get(cat, 0) + INTERVAL
+        if proj:
+            cur["by_proj"][proj] = cur["by_proj"].get(proj, 0) + INTERVAL
+        if app:
+            cur["by_app"][app] = cur["by_app"].get(app, 0) + INTERVAL
+        dom = core.get_domain(url)
+        if dom:
+            cur["by_domain"][dom] = cur["by_domain"].get(dom, 0) + INTERVAL
+    close()
+    for b in blocks:
+        b["top_cat"] = max(((c, s) for c, s in b["by_cat"].items() if c != "Break"),
+                           key=lambda x: x[1], default=("Uncategorized", 0))[0]
+    return blocks
+
+
 # ---------------------------------------------------------------- stats
 def compute_stats(name):
     start_ts, end_ts, label = range_bounds(name)
@@ -137,6 +190,7 @@ def compute_stats(name):
             d["other"] += INTERVAL
 
     sessions = build_sessions(rows)
+    work_blocks = build_work_blocks(rows, BLOCK_GAP_S)
     active_sessions = [s for s in sessions if s["category"] != "Break"]
     switches = sum(1 for a, b in zip(active_sessions, active_sessions[1:])
                    if a["category"] != b["category"])
@@ -152,6 +206,7 @@ def compute_stats(name):
         "by_cat": by_cat, "by_app": by_app, "by_proj": by_proj,
         "by_hour": by_hour, "by_day": by_day, "by_domain": by_domain,
         "sessions": sessions, "switches": switches,
+        "work_blocks": work_blocks,
         "longest_focus": longest, "peak_hour": peak_hour,
     }
 
@@ -261,6 +316,20 @@ td .rate{color:#2ecc71;font-weight:600}
 .sess td{color:#cdd3dd}
 .sess .time{color:#8b94a3;font-variant-numeric:tabular-nums;width:110px}
 .sess .dur{text-align:right;color:#8b94a3;width:70px}
+.block{border:1px solid #232a34;border-radius:10px;margin-bottom:10px;background:#161b22}
+.block>summary{list-style:none;cursor:pointer;padding:10px 14px;display:flex;align-items:center;gap:12px}
+.block>summary::-webkit-details-marker{display:none}
+.block>summary::before{content:"\\25B8";color:#5d6675;font-size:11px;width:10px;transition:transform .15s}
+.block[open]>summary::before{transform:rotate(90deg)}
+.block .btime{color:#8b94a3;font-variant-numeric:tabular-nums;font-size:13px;width:120px}
+.block .btop{flex:1;font-size:13px;color:#cdd3dd}
+.block .bdur{color:#e6e9ef;font-weight:600;font-variant-numeric:tabular-nums;font-size:13px}
+.block .bact{color:#8b94a3;font-size:12px;margin-left:8px}
+.bbody{padding:6px 16px 14px;border-top:1px solid #232a34}
+.bbody h3{font-size:11px;color:#8b94a3;text-transform:uppercase;letter-spacing:.04em;margin:12px 0 8px;font-weight:600}
+.bbody .row .lbl{width:140px}
+.bbody .row .val{width:70px}
+.bdgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px}
 """
 
 
@@ -297,6 +366,46 @@ def _timeline(sessions):
     axis = (f"<div class='tl-axis'><span>{datetime.datetime.fromtimestamp(span_start):%H:%M}</span>"
             f"<span>{datetime.datetime.fromtimestamp(span_end):%H:%M}</span></div>")
     return "<div class='timeline'>" + "".join(segs) + "</div>" + axis
+
+
+def _block_breakdown(title, items, total, color_fn=None):
+    if not items:
+        return ""
+    rows = []
+    for label, secs in sorted(items.items(), key=lambda x: -x[1])[:6]:
+        color = color_fn(label) if color_fn else "#5b6fb0"
+        rows.append(_bar_row(label, secs, total, color))
+    return f"<h3>{_esc(title)}</h3>" + "".join(rows)
+
+
+def _render_block(b, show_date=False):
+    f = core.fmt_duration
+    st_dt = datetime.datetime.fromtimestamp(b["start_ts"])
+    en_dt = datetime.datetime.fromtimestamp(b["end_ts"])
+    st = (st_dt.strftime("%a %H:%M") if show_date else st_dt.strftime("%H:%M"))
+    en = en_dt.strftime("%H:%M")
+    badge = (f"<span class='badge' style='background:{cat_color(b['top_cat'])}'>"
+             f"{_esc(b['top_cat'])}</span>")
+    active = f"<span class='bact'>{f(b['active_s'])} actief"
+    if b["break_s"]:
+        active += f" · {f(b['break_s'])} pauze"
+    active += "</span>"
+    head = (f"<summary><span class='btime'>{st} – {en}</span>"
+            f"<span class='btop'>{badge}{active}</span>"
+            f"<span class='bdur'>{f(b['duration'])}</span></summary>")
+    total = max(b["active_s"], 1)
+    cats = {c: s for c, s in b["by_cat"].items() if c != "Break"}
+    parts = [
+        _block_breakdown("Categorie", cats, total, cat_color),
+        _block_breakdown("Project", b["by_proj"], total),
+    ]
+    apps = _block_breakdown("App", b["by_app"], total)
+    doms = _block_breakdown("Site", b["by_domain"], total)
+    grid = ""
+    if apps or doms:
+        grid = f"<div class='bdgrid'><div>{apps}</div><div>{doms}</div></div>"
+    body = f"<div class='bbody'>{''.join(parts)}{grid}</div>"
+    return f"<details class='block'>{head}{body}</details>"
 
 
 def render_html(name):
@@ -343,6 +452,17 @@ def render_html(name):
                 f"<td class='r'><span class='rate'>${rev / hrs:,.0f}/uur</span></td></tr>")
     if rate_rows:
         p.append("<div class='panel'><h2>$ / uur</h2><table>" + "".join(rate_rows) + "</table></div>")
+
+    # werksessies (laptop-aan tot lange pauze, met onderverdeling)
+    blocks = list(reversed(s["work_blocks"]))
+    if blocks:
+        p.append("<div class='panel'><h2>Werksessies "
+                 f"<span style='color:#5d6675;font-weight:400'>"
+                 f"({len(blocks)} blok{'ken' if len(blocks) != 1 else ''}, "
+                 f"split bij ≥{BLOCK_GAP_S // 60} min pauze)</span></h2>")
+        for b in blocks:
+            p.append(_render_block(b, show_date=(name != "today")))
+        p.append("</div>")
 
     # deze week (focus per dag) — altijd, om koers te zien
     wk = s if name == "week" else compute_stats("week")
