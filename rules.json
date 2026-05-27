@@ -1,0 +1,14 @@
+[
+  { "category": "Distraction", "url": ["youtube.com", "twitter.com", "x.com", "reddit.com", "facebook.com", "instagram.com", "tiktok.com", "netflix.com", "twitch.tv", "9gag.com", "primevideo.com", "disneyplus.com"], "title": ["youtube", "twitter", " / x", "reddit", "facebook", "instagram", "tiktok", "netflix", "twitch", "9gag"] },
+  { "category": "AI Tools", "url": ["chatgpt.com", "chat.openai.com", "claude.ai", "gemini.google.com", "perplexity.ai", "copilot.microsoft.com"], "title": ["chatgpt", "claude", "gemini", "perplexity", "copilot"] },
+  { "category": "Sales", "url": ["upwork.com", "linkedin.com", "instantly.ai", "smartlead.ai", "apollo.io", "lemlist.com", "clay.com"], "title": ["upwork", "linkedin", "sales navigator", "instantly", "smartlead", "apollo", "lemlist", "clay"], "project": "sales" },
+  { "category": "Communities", "app": ["discord", "slack"], "url": ["discord.com", "skool.com", "circle.so", "slack.com"], "title": ["skool", "circle.so", "discord", "slack"] },
+  { "category": "Meetings", "app": ["zoom", "teams"], "url": ["meet.google.com", "zoom.us"], "title": ["zoom meeting", "google meet", "microsoft teams"] },
+  { "category": "Email", "app": ["outlook"], "url": ["mail.google.com", "outlook.live.com", "outlook.office.com", "mail.proton.me"], "title": ["gmail", "outlook", "- mail", "proton mail", "superhuman"] },
+  { "category": "Coding", "url": ["myproject.example"], "title": ["myproject"], "project": "myproject", "_comment": "Example project rule — copy this block, replace 'myproject' with your repo/domain, and add per-project rules above the generic Coding rule below." },
+  { "category": "Coding", "app": ["code.exe", "cursor", "devenv", "pycharm", "idea64", "sublime_text", "windowsterminal", "powershell", "cmd.exe", "wt.exe"], "url": ["github.com", "stackoverflow.com", "localhost", "127.0.0.1", "vercel.com", "console.cloud.google.com"], "title": ["visual studio code", "cursor", "powershell", "github"] },
+  { "category": "Design", "app": ["figma", "photoshop", "illustrator"], "url": ["figma.com", "canva.com"], "title": ["figma", "canva"] },
+  { "category": "Writing", "app": ["winword", "notion"], "url": ["notion.so", "docs.google.com", "obsidian"], "title": ["notion", "google docs", "obsidian", " - word"] },
+  { "category": "Browsing", "app": ["chrome", "firefox", "msedge", "brave", "opera", "vivaldi"] },
+  { "category": "Uncategorized" }
+]

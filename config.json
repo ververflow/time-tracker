@@ -1,0 +1,18 @@
+{
+  "poll_interval_seconds": 10,
+  "idle_threshold_seconds": 120,
+  "dashboard_port": 7878,
+  "tab_port": 7879,
+  "focus_categories": ["Coding", "Email", "Sales", "AI Tools", "Design", "Writing", "Meetings", "Communities"],
+  "distraction_categories": ["Distraction"],
+  "neutral_categories": ["Browsing", "Uncategorized"],
+  "nudge": {
+    "enabled": true,
+    "distraction_minutes": 10,
+    "break_after_minutes": 90,
+    "cooldown_minutes": 15
+  },
+  "projects": {
+    "myproject": { "revenue": 0 }
+  }
+}
