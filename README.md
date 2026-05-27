@@ -1,5 +1,8 @@
 # ⏱ Time Tracker — your own local Rize
 
+[![lint](https://github.com/ververflow/time-tracker/actions/workflows/lint.yml/badge.svg)](https://github.com/ververflow/time-tracker/actions/workflows/lint.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 An automatic time tracker that runs in the background, figures out where your
 time went, and shows you focus %, distractions, and $/hour — **no input
 required** from you. Free, and 100% local: nothing ever leaves your PC.
@@ -137,6 +140,12 @@ Runs offline correctness checks plus probes the live tracker + dashboard
   (~90% accurate). Install the extension (above) for exact URLs.
 - Global window reads can't see into apps running **as administrator** while
   they're focused — those windows show up blank/uncategorised.
+
+## Related
+
+- **[whisper-hotkey](https://github.com/ververflow/whisper-hotkey)** — push-to-talk Whisper dictation on Left Ctrl
+- **[meetflow](https://github.com/ververflow/meetflow)** — meeting recorder + transcription on Right Ctrl
+- **[sosl](https://github.com/ververflow/sosl)** — autonomous Claude Code optimisation loop
 
 ## License
 

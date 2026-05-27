@@ -4,7 +4,6 @@ Tests offline correctness (on a throwaway DB), the live running servers,
 and the browser-extension files. Prints a PASS/FAIL report.
 """
 import os
-import io
 import sys
 import json
 import time

@@ -1,0 +1,8 @@
+line-length = 120
+target-version = "py311"
+
+[lint]
+# selftest.py uses sequential test sections where imports are interleaved
+# with state mutation (e.g. setting core.DB_PATH before importing tracker).
+# E402 is intentional there.
+per-file-ignores = { "selftest.py" = ["E402"] }
